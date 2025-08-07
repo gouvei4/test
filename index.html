@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AR Finance Visualizer (WebXR)</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      #enter-ar {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        padding: 12px 20px;
+        font-size: 16px;
+        font-weight: bold;
+      }
+    </style>
+    <script type="module">
+      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.151.3/build/three.module.js';
+      import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.151.3/examples/jsm/webxr/ARButton.js';
+
+      let camera, scene, renderer;
+      let controller;
+
+      init();
+
+      function init() {
+        // Cena e câmera
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+        // Renderizador com WebXR ativado
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Botão para entrar em AR
+        document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+
+        // Controlador de interação (ponto de toque)
+        controller = renderer.xr.getController(0);
+        controller.addEventListener('select', onSelect);
+        scene.add(controller);
+
+        // Loop de animação
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+        });
+      }
+
+      function onSelect() {
+        const values = [45, 80, 60, 30, 90];
+        const barWidth = 0.05;
+        const spacing = 0.07;
+
+        values.forEach((value, i) => {
+          const height = value / 200; // escala
+          const geometry = new THREE.BoxGeometry(barWidth, height, barWidth);
+          const material = new THREE.MeshBasicMaterial({ color: 0x4caf50 });
+          const bar = new THREE.Mesh(geometry, material);
+
+          bar.position.set(i * spacing, height / 2, -0.5); // atrás do controlador
+
+          controller.add(bar);
+        });
+      }
+    </script>
+  </head>
+  <body></body>
+</html>

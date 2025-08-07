@@ -1,75 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>AR Finance Visualizer (WebXR)</title>
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-      }
-      #enter-ar {
-        position: fixed;
-        bottom: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10;
-        padding: 12px 20px;
-        font-size: 16px;
-        font-weight: bold;
-      }
-    </style>
-    <script type="module">
-      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.151.3/build/three.module.js';
-      import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.151.3/examples/jsm/webxr/ARButton.js';
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Finance com Marcador</title>
 
-      let camera, scene, renderer;
-      let controller;
+  <!-- A-Frame primeiro -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
-      init();
+  <!-- AR.js depois -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
-      function init() {
-        // Cena e câmera
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #switchButton {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      padding: 8px 12px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- Cena AR -->
+  <a-scene embedded arjs>
+    <!-- Usa o marcador Hiro (padrão do AR.js) -->
+    <a-marker preset="hiro">
+      <a-entity id="chart-container" position="0 0 0"></a-entity>
+      <a-entity id="pie-chart" visible="false" position="0 0 0"></a-entity>
+    </a-marker>
+    <a-entity camera></a-entity>
+  </a-scene>
 
-        // Renderizador com WebXR ativado
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true;
-        document.body.appendChild(renderer.domElement);
+  <!-- Botão de alternar gráficos -->
+  <button id="switchButton">Trocar Gráfico</button>
 
-        // Botão para entrar em AR
-        document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-
-        // Controlador de interação (ponto de toque)
-        controller = renderer.xr.getController(0);
-        controller.addEventListener('select', onSelect);
-        scene.add(controller);
-
-        // Loop de animação
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
+  <script>
+    AFRAME.registerComponent('generate-bar-chart', {
+      schema: { values: { type: 'array', default: [45, 80, 60, 30, 90] } },
+      init: function () {
+        const container = this.el;
+        const data = this.data.values;
+        data.forEach((value, index) => {
+          const bar = document.createElement('a-box');
+          bar.setAttribute('position', `${index * 0.6} ${value / 40} 0`);
+          bar.setAttribute('height', value / 20);
+          bar.setAttribute('width', 0.4);
+          bar.setAttribute('depth', 0.4);
+          bar.setAttribute('color', '#4CAF50');
+          container.appendChild(bar);
         });
       }
+    });
 
-      function onSelect() {
-        const values = [45, 80, 60, 30, 90];
-        const barWidth = 0.05;
-        const spacing = 0.07;
-
-        values.forEach((value, i) => {
-          const height = value / 200; // escala
-          const geometry = new THREE.BoxGeometry(barWidth, height, barWidth);
-          const material = new THREE.MeshBasicMaterial({ color: 0x4caf50 });
-          const bar = new THREE.Mesh(geometry, material);
-
-          bar.position.set(i * spacing, height / 2, -0.5); // atrás do controlador
-
-          controller.add(bar);
+    AFRAME.registerComponent('generate-pie-chart', {
+      schema: { values: { type: 'array', default: [45, 80, 60, 30, 90] } },
+      init: function () {
+        const container = this.el;
+        const data = this.data.values;
+        const total = data.reduce((sum, val) => sum + val, 0);
+        let startAngle = 0;
+        data.forEach((value, index) => {
+          const slice = document.createElement('a-ring');
+          const angle = (value / total) * 360;
+          const rotation = startAngle + angle / 2;
+          slice.setAttribute('theta-start', startAngle);
+          slice.setAttribute('theta-length', angle);
+          slice.setAttribute('radius-inner', 0.3);
+          slice.setAttribute('radius-outer', 0.8);
+          slice.setAttribute('rotation', `-90 0 ${rotation}`);
+          slice.setAttribute('color', getColor(index));
+          container.appendChild(slice);
+          startAngle += angle;
         });
       }
-    </script>
-  </head>
-  <body></body>
+    });
+
+    function getColor(index) {
+      const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+      return colors[index % colors.length];
+    }
+
+    const dadosFinanceiros = [45, 80, 60, 30, 90];
+    const barContainer = document.querySelector('#chart-container');
+    const pieContainer = document.querySelector('#pie-chart');
+
+    barContainer.setAttribute('generate-bar-chart', `values: ${JSON.stringify(dadosFinanceiros)}`);
+    pieContainer.setAttribute('generate-pie-chart', `values: ${JSON.stringify(dadosFinanceiros)}`);
+
+    document.getElementById('switchButton').addEventListener('click', () => {
+      const isBarVisible = barContainer.getAttribute('visible') !== false;
+      barContainer.setAttribute('visible', !isBarVisible);
+      pieContainer.setAttribute('visible', isBarVisible);
+    });
+  </script>
+</body>
 </html>
